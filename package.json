@@ -1,0 +1,16 @@
+{
+  "name": "adyant-travells-fullstack",
+  "version": "1.0.0",
+  "description": "Adyant Travells & Marriage Planner - Full Stack Application",
+  "scripts": {
+    "install-all": "npm install && cd server && npm install && cd ../client && npm install",
+    "dev": "concurrently \"cd server && npm run dev\" \"cd client && npm start\"",
+    "start": "concurrently \"cd server && npm start\" \"cd client && npm start\"",
+    "start:server": "cd server && npm start",
+    "start:client": "cd client && npm start",
+    "build": "cd client && npm run build"
+  },
+  "dependencies": {
+    "concurrently": "^8.2.2"
+  }
+}
