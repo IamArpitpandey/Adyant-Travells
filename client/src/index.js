@@ -4,7 +4,7 @@ import './index.css';
 import App from './App';
 import axios from 'axios';
 
-axios.defaults.baseURL = 'https://adyant-travells.onrender.com/api';
+axios.defaults.baseURL = 'https://adyant-travells.onrender.com';
 axios.defaults.withCredentials = true;
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
