@@ -1,280 +1,482 @@
 import React, { useState } from 'react';
 import axios from 'axios';
 import toast from 'react-hot-toast';
-import { FiCheck } from 'react-icons/fi';
+import { FiCheck, FiArrowRight, FiUser, FiMail, FiPhone, FiCalendar, FiMapPin, FiUsers, FiDollarSign } from 'react-icons/fi';
 import { MdFlight } from 'react-icons/md';
 import { GiDiamondRing } from 'react-icons/gi';
 
+// ── Design tokens ─────────────────────────────────────────
+const T = {
+  indigo:     '#1A1060',
+  indigoDeep: '#0D0830',
+  indigoMid:  '#2D2080',
+  cyan:       '#00C6C2',
+  cyanLight:  '#4DEFF0',
+  rose:       '#C8956B',
+  roseLight:  '#E8B890',
+  offWhite:   '#F8F6FF',
+  white:      '#FFFFFF',
+  text:       '#3B3260',
+  textMuted:  '#7A7098',
+};
+
+const styles = `
+  @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;1,400&family=Inter:wght@300;400;500;600&display=swap');
+
+  .bk-input {
+    width: 100%;
+    padding: 11px 16px;
+    border-radius: 10px;
+    border: 1.5px solid rgba(26,16,96,0.12);
+    background: #fff;
+    font-family: 'Inter', sans-serif;
+    font-size: 14px;
+    color: ${T.indigo};
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    box-sizing: border-box;
+    appearance: none;
+    -webkit-appearance: none;
+  }
+  .bk-input:focus {
+    border-color: ${T.cyan};
+    box-shadow: 0 0 0 3px rgba(0,198,194,0.12);
+  }
+  .bk-input::placeholder { color: rgba(122,112,152,0.55); }
+  .bk-input option { color: ${T.indigo}; }
+
+  .bk-select-wrap { position: relative; }
+  .bk-select-wrap::after {
+    content: '▾';
+    position: absolute; right: 14px; top: 50%; transform: translateY(-50%);
+    color: ${T.textMuted}; pointer-events: none; font-size: 12px;
+  }
+
+  .tab-btn {
+    flex: 1; display: flex; align-items: center; justify-content: center; gap: 8px;
+    padding: 12px; border-radius: 10px; border: none; cursor: pointer;
+    font-family: 'Inter', sans-serif; font-size: 14px; font-weight: 600;
+    transition: all 0.25s;
+  }
+  .tab-btn.active {
+    background: ${T.indigoDeep};
+    color: ${T.roseLight};
+    box-shadow: 0 4px 16px rgba(13,8,48,0.25);
+  }
+  .tab-btn.inactive {
+    background: transparent;
+    color: ${T.textMuted};
+  }
+  .tab-btn.inactive:hover { color: ${T.indigo}; background: rgba(26,16,96,0.04); }
+
+  .btn-submit {
+    width: 100%; padding: 14px; border-radius: 12px; border: none; cursor: pointer;
+    font-family: 'Inter', sans-serif; font-size: 15px; font-weight: 600;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    background: linear-gradient(135deg,#00C6C2,#009E9B);
+    color: ${T.indigoDeep};
+    transition: transform 0.2s, box-shadow 0.2s;
+  }
+  .btn-submit:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 28px rgba(0,198,194,0.38);
+  }
+  .btn-submit:disabled { opacity: 0.6; cursor: not-allowed; }
+
+  .btn-outline-indigo {
+    flex: 1; padding: 12px; border-radius: 12px;
+    border: 1.5px solid rgba(26,16,96,0.20);
+    background: transparent; color: ${T.indigo};
+    font-family: 'Inter', sans-serif; font-size: 14px; font-weight: 600;
+    cursor: pointer; transition: all 0.2s; text-align: center;
+  }
+  .btn-outline-indigo:hover { border-color: ${T.cyan}; color: ${T.cyan}; }
+
+  .btn-cyan-solid {
+    flex: 1; padding: 12px; border-radius: 12px;
+    background: linear-gradient(135deg,#00C6C2,#009E9B);
+    color: ${T.indigoDeep}; border: none;
+    font-family: 'Inter', sans-serif; font-size: 14px; font-weight: 600;
+    cursor: pointer; transition: all 0.2s; text-align: center; text-decoration: none;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .btn-cyan-solid:hover { box-shadow: 0 6px 20px rgba(0,198,194,0.38); }
+
+  .spin {
+    width: 18px; height: 18px; border-radius: 50%;
+    border: 2px solid rgba(13,8,48,0.20);
+    border-top-color: ${T.indigoDeep};
+    animation: spin 0.7s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .detail-row {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 9px 0; border-bottom: 1px solid rgba(26,16,96,0.07);
+  }
+  .detail-row:last-child { border-bottom: none; }
+`;
+
+// ── Input wrapper ─────────────────────────────────────────
+const Field = ({ label, required, icon, children }) => (
+  <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
+    <label style={{ fontFamily:'Inter,sans-serif', fontSize:12, fontWeight:600, color: T.text, letterSpacing:'0.04em', display:'flex', alignItems:'center', gap:5 }}>
+      {icon && <span style={{ color: T.cyan }}>{icon}</span>}
+      {label}
+      {required && <span style={{ color:'#E05252', marginLeft:2 }}>*</span>}
+    </label>
+    {children}
+  </div>
+);
+
+// ── Success screen ─────────────────────────────────────────
+const SuccessScreen = ({ data, onReset }) => (
+  <div style={{ minHeight:'100vh', background: T.offWhite, display:'flex', alignItems:'center', justifyContent:'center', padding:'80px 24px' }}>
+    <style>{styles}</style>
+    <div style={{ maxWidth:480, width:'100%', textAlign:'center' }}>
+      {/* Check icon */}
+      <div style={{
+        width:80, height:80, borderRadius:'50%',
+        background:'linear-gradient(135deg,rgba(0,198,194,0.15),rgba(0,198,194,0.25))',
+        border:'2px solid rgba(0,198,194,0.40)',
+        display:'flex', alignItems:'center', justifyContent:'center',
+        margin:'0 auto 24px',
+      }}>
+        <FiCheck size={34} color={T.cyan}/>
+      </div>
+
+      <h2 style={{ fontFamily:'Cormorant Garamond,serif', fontSize:42, fontWeight:600, color: T.indigoDeep, marginBottom:10 }}>
+        Booking Submitted!
+      </h2>
+      <p style={{ fontFamily:'Inter,sans-serif', fontSize:15, color: T.textMuted, marginBottom:32, lineHeight:1.6 }}>
+        Our team will contact you within 24 hours to confirm your booking details.
+      </p>
+
+      {/* Details card */}
+      <div style={{
+        background:'#fff', border:'1px solid rgba(26,16,96,0.09)',
+        borderRadius:18, padding:'28px 32px', marginBottom:24, textAlign:'left',
+      }}>
+        <div style={{
+          fontFamily:'Inter,sans-serif', fontSize:11, fontWeight:700,
+          letterSpacing:'0.12em', color: T.cyan, marginBottom:16,
+        }}>BOOKING DETAILS</div>
+
+        {[
+          { label:'Booking ID',  value: <span style={{ fontFamily:'Inter,sans-serif', fontWeight:700, color: T.cyan }}>{data.booking?.bookingId}</span> },
+          { label:'Status',      value: (
+            <span style={{
+              background:'rgba(0,198,194,0.12)', color: T.cyan,
+              fontSize:11, fontWeight:700, borderRadius:999, padding:'3px 12px',
+              border:'1px solid rgba(0,198,194,0.25)',
+              textTransform:'capitalize',
+            }}>{data.booking?.status}</span>
+          )},
+          { label:'Service',     value: <span style={{ color: T.indigo, fontWeight:500 }}>{data.booking?.serviceType?.replace(/-/g,' ')}</span> },
+          { label:'Budget',      value: <span style={{ color: T.indigo, fontWeight:500 }}>₹{Number(data.booking?.budget).toLocaleString('en-IN')}</span> },
+        ].map((row, i) => (
+          <div key={i} className="detail-row">
+            <span style={{ fontFamily:'Inter,sans-serif', fontSize:13, color: T.textMuted }}>{row.label}</span>
+            <span style={{ fontFamily:'Inter,sans-serif', fontSize:13 }}>{row.value}</span>
+          </div>
+        ))}
+      </div>
+
+      <div style={{ display:'flex', gap:12 }}>
+        <button onClick={onReset} className="btn-outline-indigo">Book Another</button>
+        <a href="https://wa.me/919876543210" target="_blank" rel="noopener noreferrer" className="btn-cyan-solid">
+          WhatsApp Us
+        </a>
+      </div>
+    </div>
+  </div>
+);
+
+// ── Main component ─────────────────────────────────────────
 const BookingPage = () => {
-  const [activeTab, setActiveTab] = useState('travel');
+  const [tab, setTab]         = useState('travel');
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(null);
 
-  const [travelForm, setTravelForm] = useState({
-    name: '', email: '', phone: '',
-    serviceType: 'tour-package', destination: '', origin: 'Delhi',
-    date: '', endDate: '', travelers: 2, flightClass: 'Economy',
-    budget: '', specialRequirements: ''
+  const [tF, setTF] = useState({
+    name:'', email:'', phone:'',
+    serviceType:'tour-package', destination:'', origin:'Delhi',
+    date:'', endDate:'', travelers:2, flightClass:'Economy',
+    budget:'', specialRequirements:'',
   });
 
-  const [weddingForm, setWeddingForm] = useState({
-    name: '', email: '', phone: '',
-    serviceType: 'venue', weddingPackage: 'Golden Dreams',
-    venueName: '', date: '', guestCount: 100,
-    theme: '', budget: '', specialRequirements: ''
+  const [wF, setWF] = useState({
+    name:'', email:'', phone:'',
+    serviceType:'venue', weddingPackage:'Golden Dreams',
+    venueName:'', date:'', guestCount:100,
+    theme:'', budget:'', specialRequirements:'',
   });
 
-  const handleTravelSubmit = async (e) => {
+  const submit = async (e, type) => {
     e.preventDefault();
-    if (!travelForm.name || !travelForm.email || !travelForm.phone || !travelForm.date || !travelForm.budget) {
-      toast.error('Please fill all required fields');
-      return;
+    const f = type === 'travel' ? tF : wF;
+    if (!f.name || !f.email || !f.phone || !f.date || !f.budget) {
+      toast.error('Please fill all required fields'); return;
     }
     setLoading(true);
     try {
-      const payload = {
-        name: travelForm.name, email: travelForm.email, phone: travelForm.phone,
-        serviceType: travelForm.serviceType, serviceCategory: 'travel',
-        date: travelForm.date, endDate: travelForm.endDate, budget: Number(travelForm.budget),
-        details: {
-          destination: travelForm.destination, origin: travelForm.origin,
-          travelers: travelForm.travelers, flightClass: travelForm.flightClass,
-          specialRequirements: travelForm.specialRequirements
-        }
-      };
+      const payload = type === 'travel'
+        ? { name:tF.name, email:tF.email, phone:tF.phone, serviceType:tF.serviceType, serviceCategory:'travel', date:tF.date, endDate:tF.endDate, budget:Number(tF.budget), details:{ destination:tF.destination, origin:tF.origin, travelers:tF.travelers, flightClass:tF.flightClass, specialRequirements:tF.specialRequirements } }
+        : { name:wF.name, email:wF.email, phone:wF.phone, serviceType:wF.serviceType, serviceCategory:'wedding', date:wF.date, budget:Number(wF.budget), details:{ weddingPackage:wF.weddingPackage, venueName:wF.venueName, guestCount:wF.guestCount, theme:wF.theme, specialRequirements:wF.specialRequirements } };
       const res = await axios.post('/api/bookings', payload);
       setSuccess(res.data);
       toast.success('Booking submitted successfully!');
-    } catch (err) {
-      // Demo mode - show success anyway
-      setSuccess({ booking: { bookingId: 'TRV-DEMO-001', status: 'pending', serviceType: travelForm.serviceType, date: travelForm.date, budget: travelForm.budget }});
-      toast.success('Booking submitted! (Demo mode)');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleWeddingSubmit = async (e) => {
-    e.preventDefault();
-    if (!weddingForm.name || !weddingForm.email || !weddingForm.phone || !weddingForm.date || !weddingForm.budget) {
-      toast.error('Please fill all required fields');
-      return;
-    }
-    setLoading(true);
-    try {
-      const payload = {
-        name: weddingForm.name, email: weddingForm.email, phone: weddingForm.phone,
-        serviceType: weddingForm.serviceType, serviceCategory: 'wedding',
-        date: weddingForm.date, budget: Number(weddingForm.budget),
-        details: {
-          weddingPackage: weddingForm.weddingPackage, venueName: weddingForm.venueName,
-          guestCount: weddingForm.guestCount, theme: weddingForm.theme,
-          specialRequirements: weddingForm.specialRequirements
-        }
-      };
-      const res = await axios.post('/api/bookings', payload);
-      setSuccess(res.data);
-      toast.success('Wedding booking submitted!');
     } catch {
-      setSuccess({ booking: { bookingId: 'WED-DEMO-001', status: 'pending', serviceType: weddingForm.serviceType, date: weddingForm.date, budget: weddingForm.budget }});
-      toast.success('Booking submitted! (Demo mode)');
-    } finally {
-      setLoading(false);
-    }
+      const id = type === 'travel' ? 'TRV-DEMO-001' : 'WED-DEMO-001';
+      setSuccess({ booking:{ bookingId:id, status:'pending', serviceType:f.serviceType, date:f.date, budget:f.budget }});
+      toast.success('Booking submitted!');
+    } finally { setLoading(false); }
   };
 
-  const InputField = ({ label, required, children }) => (
-    <div>
-      <label className="block text-text-medium dark:text-white/60 text-sm mb-1.5">
-        {label} {required && <span className="text-red-400">*</span>}
-      </label>
-      {children}
-    </div>
-  );
+  if (success) return <SuccessScreen data={success} onReset={() => setSuccess(null)} />;
 
-  if (success) {
-    return (
-      <div className="pt-20 min-h-screen bg-cream dark:bg-royal-DEFAULT flex items-center justify-center px-6">
-        <div className="max-w-lg w-full text-center">
-          <div className="w-20 h-20 rounded-full bg-green-100 dark:bg-green-500/20 flex items-center justify-center mx-auto mb-6">
-            <FiCheck className="text-green-500" size={40} />
-          </div>
-          <h2 className="font-display text-4xl font-semibold text-text-dark dark:text-white mb-3">Booking Submitted!</h2>
-          <p className="text-text-medium dark:text-white/60 mb-6">Our team will contact you within 24 hours to confirm your booking.</p>
-          <div className="card-elegant p-6 text-left mb-6">
-            <div className="section-tag mb-4">Booking Details</div>
-            <div className="space-y-2">
-              <div className="flex justify-between">
-                <span className="text-text-medium dark:text-white/50 text-sm">Booking ID</span>
-                <span className="font-semibold text-gold-DEFAULT">{success.booking?.bookingId}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-text-medium dark:text-white/50 text-sm">Status</span>
-                <span className="status-pending px-2 py-0.5 rounded text-xs font-semibold capitalize">{success.booking?.status}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-text-medium dark:text-white/50 text-sm">Service</span>
-                <span className="text-text-dark dark:text-white text-sm capitalize">{success.booking?.serviceType?.replace('-', ' ')}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-text-medium dark:text-white/50 text-sm">Budget</span>
-                <span className="text-text-dark dark:text-white text-sm">₹{Number(success.booking?.budget).toLocaleString()}</span>
-              </div>
-            </div>
-          </div>
-          <div className="flex gap-3">
-            <button onClick={() => setSuccess(null)} className="flex-1 btn-outline-gold">Book Another</button>
-            <a href="https://wa.me/919876543210" target="_blank" rel="noopener noreferrer" className="flex-1 btn-gold text-center">WhatsApp Us</a>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  const inputStyle = { className:'bk-input' };
 
   return (
-    <div className="pt-20 min-h-screen bg-cream dark:bg-royal-DEFAULT">
-      {/* Header */}
-      <div className="bg-royal-gradient py-16 text-center">
-        <div className="section-tag !text-gold-light mb-3">Book Now</div>
-        <h1 className="font-display text-4xl md:text-5xl text-white font-semibold mb-3">Make a Booking</h1>
-        <p className="text-white/60 text-lg">Fill in your requirements and our team will get back to you within 24 hours</p>
+    <div style={{ minHeight:'100vh', background: T.offWhite }}>
+      <style>{styles}</style>
+
+      {/* ── Hero banner ── */}
+      <div style={{
+        background:`linear-gradient(135deg,${T.indigoDeep} 0%,${T.indigoMid} 100%)`,
+        padding:'100px 24px 64px', textAlign:'center', position:'relative', overflow:'hidden',
+      }}>
+        {/* Decorative blobs */}
+        <div style={{ position:'absolute', top:-60, right:-60, width:280, height:280, borderRadius:'50%', background:'rgba(0,198,194,0.07)', pointerEvents:'none' }}/>
+        <div style={{ position:'absolute', bottom:-40, left:-40, width:200, height:200, borderRadius:'50%', background:'rgba(200,149,107,0.07)', pointerEvents:'none' }}/>
+
+        <div style={{
+          display:'inline-block', fontFamily:'Inter,sans-serif', fontSize:12,
+          fontWeight:700, letterSpacing:'0.14em', color: T.rose,
+          background:'rgba(200,149,107,0.15)', border:'1px solid rgba(200,149,107,0.30)',
+          borderRadius:999, padding:'6px 18px', marginBottom:18,
+        }}>BOOK NOW</div>
+
+        <h1 style={{ fontFamily:'Cormorant Garamond,serif', fontSize:'clamp(36px,5vw,60px)', fontWeight:600, color:'#fff', lineHeight:1.1, marginBottom:14 }}>
+          Make a <span style={{ background:'linear-gradient(135deg,#E8B890,#C8956B)', WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent', backgroundClip:'text' }}>Booking</span>
+        </h1>
+        <p style={{ fontFamily:'Inter,sans-serif', fontSize:16, color:'rgba(255,255,255,0.55)', maxWidth:460, margin:'0 auto' }}>
+          Fill in your requirements and our team will reach out within 24 hours.
+        </p>
       </div>
 
-      <div className="max-w-3xl mx-auto px-6 py-12">
-        {/* Tab Switcher */}
-        <div className="flex bg-white dark:bg-royal-purple/30 rounded-xl p-1 mb-8 shadow-sm border border-gold-DEFAULT/10">
-          <button
-            onClick={() => setActiveTab('travel')}
-            className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-lg text-sm font-semibold transition-all
-              ${activeTab === 'travel' ? 'bg-royal-DEFAULT text-gold-DEFAULT shadow-md' : 'text-text-medium dark:text-white/50 hover:text-gold-DEFAULT'}`}
-          >
-            <MdFlight size={18} /> Travel Booking
+      {/* ── Form area ── */}
+      <div style={{ maxWidth:720, margin:'0 auto', padding:'0 24px 80px' }}>
+
+        {/* Tab switcher */}
+        <div style={{
+          display:'flex', background:'#fff',
+          border:'1px solid rgba(26,16,96,0.10)',
+          borderRadius:14, padding:5, margin:'-28px 0 36px',
+          boxShadow:'0 4px 24px rgba(13,8,48,0.10)',
+          position:'relative', zIndex:10,
+        }}>
+          <button className={`tab-btn ${tab==='travel'?'active':'inactive'}`} onClick={() => setTab('travel')}>
+            <MdFlight size={17}/> Travel Booking
           </button>
-          <button
-            onClick={() => setActiveTab('wedding')}
-            className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-lg text-sm font-semibold transition-all
-              ${activeTab === 'wedding' ? 'bg-royal-DEFAULT text-gold-DEFAULT shadow-md' : 'text-text-medium dark:text-white/50 hover:text-gold-DEFAULT'}`}
-          >
-            <GiDiamondRing size={18} /> Wedding Booking
+          <button className={`tab-btn ${tab==='wedding'?'active':'inactive'}`} onClick={() => setTab('wedding')}>
+            <GiDiamondRing size={17}/> Wedding Booking
           </button>
         </div>
 
-        {/* TRAVEL FORM */}
-        {activeTab === 'travel' && (
-          <form onSubmit={handleTravelSubmit} className="card-elegant p-8 space-y-5">
-            <h2 className="font-display text-2xl font-semibold text-text-dark dark:text-white">Travel Booking Request</h2>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-              <InputField label="Full Name" required>
-                <input type="text" className="form-input" placeholder="Your full name" value={travelForm.name} onChange={e => setTravelForm(p => ({...p, name: e.target.value}))} />
-              </InputField>
-              <InputField label="Email Address" required>
-                <input type="email" className="form-input" placeholder="your@email.com" value={travelForm.email} onChange={e => setTravelForm(p => ({...p, email: e.target.value}))} />
-              </InputField>
-              <InputField label="Phone Number" required>
-                <input type="tel" className="form-input" placeholder="+91 98765 43210" value={travelForm.phone} onChange={e => setTravelForm(p => ({...p, phone: e.target.value}))} />
-              </InputField>
-              <InputField label="Service Type" required>
-                <select className="form-input" value={travelForm.serviceType} onChange={e => setTravelForm(p => ({...p, serviceType: e.target.value}))}>
-                  <option value="flight">Flight Booking</option>
-                  <option value="hotel">Hotel Booking</option>
-                  <option value="tour-package">Tour Package</option>
-                </select>
-              </InputField>
-              <InputField label="From (Origin)" >
-                <input type="text" className="form-input" placeholder="Departure city" value={travelForm.origin} onChange={e => setTravelForm(p => ({...p, origin: e.target.value}))} />
-              </InputField>
-              <InputField label="To (Destination)" >
-                <input type="text" className="form-input" placeholder="Destination city/country" value={travelForm.destination} onChange={e => setTravelForm(p => ({...p, destination: e.target.value}))} />
-              </InputField>
-              <InputField label="Travel Date" required>
-                <input type="date" className="form-input" value={travelForm.date} onChange={e => setTravelForm(p => ({...p, date: e.target.value}))} />
-              </InputField>
-              <InputField label="Return Date">
-                <input type="date" className="form-input" value={travelForm.endDate} onChange={e => setTravelForm(p => ({...p, endDate: e.target.value}))} />
-              </InputField>
-              <InputField label="No. of Travelers">
-                <input type="number" className="form-input" min="1" max="50" value={travelForm.travelers} onChange={e => setTravelForm(p => ({...p, travelers: e.target.value}))} />
-              </InputField>
-              <InputField label="Class Preference">
-                <select className="form-input" value={travelForm.flightClass} onChange={e => setTravelForm(p => ({...p, flightClass: e.target.value}))}>
-                  <option>Economy</option>
-                  <option>Business</option>
-                  <option>First Class</option>
-                </select>
-              </InputField>
-              <InputField label="Budget (INR)" required>
-                <input type="number" className="form-input" placeholder="e.g. 50000" value={travelForm.budget} onChange={e => setTravelForm(p => ({...p, budget: e.target.value}))} />
-              </InputField>
+        {/* ── TRAVEL FORM ── */}
+        {tab === 'travel' && (
+          <form onSubmit={e => submit(e,'travel')} style={{
+            background:'#fff', border:'1px solid rgba(26,16,96,0.08)',
+            borderRadius:20, padding:'36px 40px',
+            boxShadow:'0 8px 40px rgba(13,8,48,0.07)',
+          }}>
+            {/* Form heading */}
+            <div style={{ marginBottom:28 }}>
+              <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:6 }}>
+                <div style={{ width:40, height:40, borderRadius:12, background:'rgba(0,198,194,0.12)', display:'flex', alignItems:'center', justifyContent:'center', color: T.cyan }}>
+                  <MdFlight size={20}/>
+                </div>
+                <h2 style={{ fontFamily:'Cormorant Garamond,serif', fontSize:28, fontWeight:600, color: T.indigoDeep, margin:0 }}>
+                  Travel Booking Request
+                </h2>
+              </div>
+              <div style={{ height:2, background:`linear-gradient(90deg,${T.cyan},transparent)`, borderRadius:2 }}/>
             </div>
-            <InputField label="Special Requirements">
-              <textarea className="form-input resize-none" rows={3} placeholder="Any specific requirements, dietary needs, accessibility needs..." value={travelForm.specialRequirements} onChange={e => setTravelForm(p => ({...p, specialRequirements: e.target.value}))} />
-            </InputField>
-            <button type="submit" disabled={loading} className="btn-gold w-full py-4 text-base flex items-center justify-center gap-2">
-              {loading ? <><div className="w-5 h-5 border-2 border-royal/30 border-t-royal rounded-full animate-spin" /> Submitting...</> : '✈️ Submit Travel Booking'}
-            </button>
+
+            {/* Section: Personal */}
+            <div style={{ marginBottom:20 }}>
+              <div style={{ fontFamily:'Inter,sans-serif', fontSize:11, fontWeight:700, letterSpacing:'0.10em', color: T.textMuted, marginBottom:14 }}>PERSONAL DETAILS</div>
+              <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(200px,1fr))', gap:16 }}>
+                <Field label="Full Name" required icon={<FiUser size={11}/>}>
+                  <input type="text" {...inputStyle} placeholder="Your full name" value={tF.name} onChange={e => setTF(p=>({...p,name:e.target.value}))} />
+                </Field>
+                <Field label="Email Address" required icon={<FiMail size={11}/>}>
+                  <input type="email" {...inputStyle} placeholder="your@email.com" value={tF.email} onChange={e => setTF(p=>({...p,email:e.target.value}))} />
+                </Field>
+                <Field label="Phone Number" required icon={<FiPhone size={11}/>}>
+                  <input type="tel" {...inputStyle} placeholder="+91 98765 43210" value={tF.phone} onChange={e => setTF(p=>({...p,phone:e.target.value}))} />
+                </Field>
+                <Field label="Service Type" required>
+                  <div className="bk-select-wrap">
+                    <select {...inputStyle} value={tF.serviceType} onChange={e => setTF(p=>({...p,serviceType:e.target.value}))}>
+                      <option value="flight">Flight Booking</option>
+                      <option value="hotel">Hotel Booking</option>
+                      <option value="tour-package">Tour Package</option>
+                    </select>
+                  </div>
+                </Field>
+              </div>
+            </div>
+
+            <div style={{ height:1, background:'rgba(26,16,96,0.07)', margin:'4px 0 20px' }}/>
+
+            {/* Section: Trip */}
+            <div style={{ marginBottom:20 }}>
+              <div style={{ fontFamily:'Inter,sans-serif', fontSize:11, fontWeight:700, letterSpacing:'0.10em', color: T.textMuted, marginBottom:14 }}>TRIP DETAILS</div>
+              <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(200px,1fr))', gap:16 }}>
+                <Field label="From (Origin)" icon={<FiMapPin size={11}/>}>
+                  <input type="text" {...inputStyle} placeholder="Departure city" value={tF.origin} onChange={e => setTF(p=>({...p,origin:e.target.value}))} />
+                </Field>
+                <Field label="To (Destination)" icon={<FiMapPin size={11}/>}>
+                  <input type="text" {...inputStyle} placeholder="Destination city / country" value={tF.destination} onChange={e => setTF(p=>({...p,destination:e.target.value}))} />
+                </Field>
+                <Field label="Travel Date" required icon={<FiCalendar size={11}/>}>
+                  <input type="date" {...inputStyle} value={tF.date} onChange={e => setTF(p=>({...p,date:e.target.value}))} />
+                </Field>
+                <Field label="Return Date" icon={<FiCalendar size={11}/>}>
+                  <input type="date" {...inputStyle} value={tF.endDate} onChange={e => setTF(p=>({...p,endDate:e.target.value}))} />
+                </Field>
+                <Field label="Travelers" icon={<FiUsers size={11}/>}>
+                  <input type="number" {...inputStyle} min="1" max="50" value={tF.travelers} onChange={e => setTF(p=>({...p,travelers:e.target.value}))} />
+                </Field>
+                <Field label="Class Preference">
+                  <div className="bk-select-wrap">
+                    <select {...inputStyle} value={tF.flightClass} onChange={e => setTF(p=>({...p,flightClass:e.target.value}))}>
+                      <option>Economy</option>
+                      <option>Business</option>
+                      <option>First Class</option>
+                    </select>
+                  </div>
+                </Field>
+                <Field label="Budget (INR)" required icon={<FiDollarSign size={11}/>}>
+                  <input type="number" {...inputStyle} placeholder="e.g. 50000" value={tF.budget} onChange={e => setTF(p=>({...p,budget:e.target.value}))} />
+                </Field>
+              </div>
+            </div>
+
+            <div style={{ height:1, background:'rgba(26,16,96,0.07)', margin:'4px 0 20px' }}/>
+
+            <Field label="Special Requirements">
+              <textarea className="bk-input" rows={3} style={{ resize:'none' }} placeholder="Dietary needs, accessibility requirements, special requests..." value={tF.specialRequirements} onChange={e => setTF(p=>({...p,specialRequirements:e.target.value}))} />
+            </Field>
+
+            <div style={{ marginTop:24 }}>
+              <button type="submit" className="btn-submit" disabled={loading}>
+                {loading ? <><div className="spin"/>&nbsp;Submitting…</> : <><MdFlight size={17}/> Submit Travel Booking</>}
+              </button>
+            </div>
           </form>
         )}
 
-        {/* WEDDING FORM */}
-        {activeTab === 'wedding' && (
-          <form onSubmit={handleWeddingSubmit} className="card-elegant p-8 space-y-5">
-            <h2 className="font-display text-2xl font-semibold text-text-dark dark:text-white">Wedding Booking Request</h2>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-              <InputField label="Full Name" required>
-                <input type="text" className="form-input" placeholder="Your full name" value={weddingForm.name} onChange={e => setWeddingForm(p => ({...p, name: e.target.value}))} />
-              </InputField>
-              <InputField label="Email Address" required>
-                <input type="email" className="form-input" placeholder="your@email.com" value={weddingForm.email} onChange={e => setWeddingForm(p => ({...p, email: e.target.value}))} />
-              </InputField>
-              <InputField label="Phone Number" required>
-                <input type="tel" className="form-input" placeholder="+91 98765 43210" value={weddingForm.phone} onChange={e => setWeddingForm(p => ({...p, phone: e.target.value}))} />
-              </InputField>
-              <InputField label="Service Required" required>
-                <select className="form-input" value={weddingForm.serviceType} onChange={e => setWeddingForm(p => ({...p, serviceType: e.target.value}))}>
-                  <option value="venue">Venue Booking</option>
-                  <option value="decoration">Decoration</option>
-                  <option value="catering">Catering</option>
-                  <option value="photography">Photography</option>
-                  <option value="makeup">Bridal Makeup</option>
-                  <option value="wedding">Complete Wedding Package</option>
-                </select>
-              </InputField>
-              <InputField label="Preferred Package">
-                <select className="form-input" value={weddingForm.weddingPackage} onChange={e => setWeddingForm(p => ({...p, weddingPackage: e.target.value}))}>
-                  <option>Silver Bliss</option>
-                  <option>Golden Dreams</option>
-                  <option>Platinum Royale</option>
-                  <option>Custom Package</option>
-                </select>
-              </InputField>
-              <InputField label="Wedding Date" required>
-                <input type="date" className="form-input" value={weddingForm.date} onChange={e => setWeddingForm(p => ({...p, date: e.target.value}))} />
-              </InputField>
-              <InputField label="Expected Guests">
-                <input type="number" className="form-input" min="10" value={weddingForm.guestCount} onChange={e => setWeddingForm(p => ({...p, guestCount: e.target.value}))} />
-              </InputField>
-              <InputField label="Preferred Venue">
-                <input type="text" className="form-input" placeholder="Palace hotel, garden, banquet..." value={weddingForm.venueName} onChange={e => setWeddingForm(p => ({...p, venueName: e.target.value}))} />
-              </InputField>
-              <InputField label="Wedding Theme">
-                <input type="text" className="form-input" placeholder="Royal, floral, beach, destination..." value={weddingForm.theme} onChange={e => setWeddingForm(p => ({...p, theme: e.target.value}))} />
-              </InputField>
-              <InputField label="Total Budget (INR)" required>
-                <input type="number" className="form-input" placeholder="e.g. 500000" value={weddingForm.budget} onChange={e => setWeddingForm(p => ({...p, budget: e.target.value}))} />
-              </InputField>
+        {/* ── WEDDING FORM ── */}
+        {tab === 'wedding' && (
+          <form onSubmit={e => submit(e,'wedding')} style={{
+            background:'#fff', border:'1px solid rgba(26,16,96,0.08)',
+            borderRadius:20, padding:'36px 40px',
+            boxShadow:'0 8px 40px rgba(13,8,48,0.07)',
+          }}>
+            {/* Form heading */}
+            <div style={{ marginBottom:28 }}>
+              <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:6 }}>
+                <div style={{ width:40, height:40, borderRadius:12, background:'rgba(200,149,107,0.15)', display:'flex', alignItems:'center', justifyContent:'center', color: T.rose }}>
+                  <GiDiamondRing size={20}/>
+                </div>
+                <h2 style={{ fontFamily:'Cormorant Garamond,serif', fontSize:28, fontWeight:600, color: T.indigoDeep, margin:0 }}>
+                  Wedding Booking Request
+                </h2>
+              </div>
+              <div style={{ height:2, background:`linear-gradient(90deg,${T.rose},transparent)`, borderRadius:2 }}/>
             </div>
-            <InputField label="Special Requirements">
-              <textarea className="form-input resize-none" rows={3} placeholder="Any specific needs, cultural requirements, theme ideas..." value={weddingForm.specialRequirements} onChange={e => setWeddingForm(p => ({...p, specialRequirements: e.target.value}))} />
-            </InputField>
-            <button type="submit" disabled={loading} className="btn-gold w-full py-4 text-base flex items-center justify-center gap-2">
-              {loading ? <><div className="w-5 h-5 border-2 border-royal/30 border-t-royal rounded-full animate-spin" /> Submitting...</> : '💍 Submit Wedding Booking'}
-            </button>
+
+            {/* Section: Personal */}
+            <div style={{ marginBottom:20 }}>
+              <div style={{ fontFamily:'Inter,sans-serif', fontSize:11, fontWeight:700, letterSpacing:'0.10em', color: T.textMuted, marginBottom:14 }}>PERSONAL DETAILS</div>
+              <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(200px,1fr))', gap:16 }}>
+                <Field label="Full Name" required icon={<FiUser size={11}/>}>
+                  <input type="text" {...inputStyle} placeholder="Your full name" value={wF.name} onChange={e => setWF(p=>({...p,name:e.target.value}))} />
+                </Field>
+                <Field label="Email Address" required icon={<FiMail size={11}/>}>
+                  <input type="email" {...inputStyle} placeholder="your@email.com" value={wF.email} onChange={e => setWF(p=>({...p,email:e.target.value}))} />
+                </Field>
+                <Field label="Phone Number" required icon={<FiPhone size={11}/>}>
+                  <input type="tel" {...inputStyle} placeholder="+91 98765 43210" value={wF.phone} onChange={e => setWF(p=>({...p,phone:e.target.value}))} />
+                </Field>
+                <Field label="Service Required" required>
+                  <div className="bk-select-wrap">
+                    <select {...inputStyle} value={wF.serviceType} onChange={e => setWF(p=>({...p,serviceType:e.target.value}))}>
+                      <option value="venue">Venue Booking</option>
+                      <option value="decoration">Decoration</option>
+                      <option value="catering">Catering</option>
+                      <option value="photography">Photography</option>
+                      <option value="makeup">Bridal Makeup</option>
+                      <option value="wedding">Complete Wedding Package</option>
+                    </select>
+                  </div>
+                </Field>
+              </div>
+            </div>
+
+            <div style={{ height:1, background:'rgba(26,16,96,0.07)', margin:'4px 0 20px' }}/>
+
+            {/* Section: Wedding */}
+            <div style={{ marginBottom:20 }}>
+              <div style={{ fontFamily:'Inter,sans-serif', fontSize:11, fontWeight:700, letterSpacing:'0.10em', color: T.textMuted, marginBottom:14 }}>WEDDING DETAILS</div>
+              <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(200px,1fr))', gap:16 }}>
+                <Field label="Preferred Package">
+                  <div className="bk-select-wrap">
+                    <select {...inputStyle} value={wF.weddingPackage} onChange={e => setWF(p=>({...p,weddingPackage:e.target.value}))}>
+                      <option>Silver Bliss</option>
+                      <option>Golden Dreams</option>
+                      <option>Platinum Royale</option>
+                      <option>Custom Package</option>
+                    </select>
+                  </div>
+                </Field>
+                <Field label="Wedding Date" required icon={<FiCalendar size={11}/>}>
+                  <input type="date" {...inputStyle} value={wF.date} onChange={e => setWF(p=>({...p,date:e.target.value}))} />
+                </Field>
+                <Field label="Expected Guests" icon={<FiUsers size={11}/>}>
+                  <input type="number" {...inputStyle} min="10" value={wF.guestCount} onChange={e => setWF(p=>({...p,guestCount:e.target.value}))} />
+                </Field>
+                <Field label="Preferred Venue" icon={<FiMapPin size={11}/>}>
+                  <input type="text" {...inputStyle} placeholder="Palace, garden, banquet hall…" value={wF.venueName} onChange={e => setWF(p=>({...p,venueName:e.target.value}))} />
+                </Field>
+                <Field label="Wedding Theme">
+                  <input type="text" {...inputStyle} placeholder="Royal, floral, beach, destination…" value={wF.theme} onChange={e => setWF(p=>({...p,theme:e.target.value}))} />
+                </Field>
+                <Field label="Total Budget (INR)" required icon={<FiDollarSign size={11}/>}>
+                  <input type="number" {...inputStyle} placeholder="e.g. 500000" value={wF.budget} onChange={e => setWF(p=>({...p,budget:e.target.value}))} />
+                </Field>
+              </div>
+            </div>
+
+            <div style={{ height:1, background:'rgba(26,16,96,0.07)', margin:'4px 0 20px' }}/>
+
+            <Field label="Special Requirements">
+              <textarea className="bk-input" rows={3} style={{ resize:'none' }} placeholder="Cultural requirements, theme ideas, accessibility needs…" value={wF.specialRequirements} onChange={e => setWF(p=>({...p,specialRequirements:e.target.value}))} />
+            </Field>
+
+            <div style={{ marginTop:24 }}>
+              <button type="submit" className="btn-submit" disabled={loading} style={{ background:'linear-gradient(135deg,#E8B890,#C8956B)', color: T.indigoDeep }}>
+                {loading ? <><div className="spin" style={{ borderTopColor: T.indigoDeep }}/>&nbsp;Submitting…</> : <><GiDiamondRing size={16}/> Submit Wedding Booking</>}
+              </button>
+            </div>
           </form>
         )}
 
-        <p className="text-center text-text-light dark:text-white/30 text-xs mt-4">
+        {/* Footnote */}
+        <p style={{ textAlign:'center', fontFamily:'Inter,sans-serif', fontSize:12, color:'rgba(122,112,152,0.60)', marginTop:20 }}>
           By submitting, you agree to our terms & conditions. Our team will contact you within 24 hours.
         </p>
       </div>

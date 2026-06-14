@@ -16,6 +16,10 @@ module.exports = {
           soft: '#4A3580',
         },
         cream: '#FDF6EC',
+        colors: {
+          primary: '#111827',
+          secondary: '#FACC15',
+        }
       },
       fontFamily: {
         display: ['Cormorant Garamond', 'serif'],
